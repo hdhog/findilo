@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/xml"
-	"flag"
 	"fmt"
 	"github.com/crackcomm/go-clitable"
 	"github.com/parnurzeal/gorequest"
+	"gopkg.in/alecthomas/kingpin.v2"
 	"net"
 	"os"
 	"regexp"
@@ -48,7 +48,7 @@ const (
 )
 
 var (
-	IP_NETWORK   = ""
+	IP_NETWORK   = kingpin.Arg("network", "Scan network, format 10.0.0.0/24").Required().String()
 	IP_NETPARSED []string
 )
 
@@ -77,18 +77,15 @@ func IsOpen(host string, port int) bool {
 }
 
 func init() {
-	flag.StringVar(&IP_NETWORK, "net", "", "Scan network, format 10.0.0.0/24")
-	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-		flag.PrintDefaults()
-	}
-	flag.Parse()
-	if len(IP_NETWORK) == 0 {
-		flag.Usage()
-		os.Exit(1)
-	}
+	//flag.StringVar(&IP_NETWORK, "net", "", "Scan network, format 10.0.0.0/24")
+	//flag.Usage = func() {
+	//fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+	//flag.PrintDefaults()
+	//}
+	//flag.Parse()
+	kingpin.Parse()
 
-	ip, ipnet, err := net.ParseCIDR(IP_NETWORK)
+	ip, ipnet, err := net.ParseCIDR(*IP_NETWORK)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -165,5 +162,5 @@ func main() {
 	table.Markdown = true
 	table.Print()
 	fmt.Println("")
-	fmt.Printf("%d iLOs found on network target %s.\n", len(iloip), IP_NETWORK)
+	fmt.Printf("%d iLOs found on network target %s.\n", len(iloip), *IP_NETWORK)
 }
