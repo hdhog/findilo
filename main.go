@@ -3,17 +3,71 @@ package main
 import (
 	"encoding/xml"
 	"fmt"
-	"github.com/crackcomm/go-clitable"
-	"github.com/parnurzeal/gorequest"
-	"gopkg.in/alecthomas/kingpin.v2"
 	"net"
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/cheggaaa/pb"
+	"github.com/codegangsta/cli"
+	"github.com/olekukonko/tablewriter"
+	"github.com/parnurzeal/gorequest"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
+const (
+	iloPort = 17988
+)
+
+var (
+	ipNetwork   = kingpin.Arg("network", "Scan network, format 10.0.0.0/24").Required().String()
+	ipNetParsed []string
+)
+
+type ILOInfo struct {
+	IP     string
+	HW     string
+	Model  string
+	FW     string
+	Serial string
+}
+type ILOSorter struct {
+	ilo []ILOInfo
+	by  func(i1, i2 *ILOInfo) bool
+}
+
+// By is the type of a "less" function that defines the ordering of its Planet arguments.
+type By func(i1, i2 *ILOInfo) bool
+
+// Sort is a method on the function type, By, that sorts the argument slice according to the function.
+func (by By) Sort(ilo []ILOInfo) {
+	ps := &ILOSorter{
+		ilo: ilo,
+		by:  by, // The Sort method's receiver is the function (closure) that defines the sort order.
+	}
+	sort.Sort(ps)
+}
+
+// Len is part of sort.Interface.
+func (s *ILOSorter) Len() int {
+	return len(s.ilo)
+}
+
+// Swap is part of sort.Interface.
+func (s *ILOSorter) Swap(i, j int) {
+	s.ilo[i], s.ilo[j] = s.ilo[j], s.ilo[i]
+}
+
+// Less is part of sort.Interface. It is implemented by calling the "by" closure in the sorter.
+func (s *ILOSorter) Less(i, j int) bool {
+	return s.by(&s.ilo[i], &s.ilo[j])
+}
+
+// RIMP ...
 type RIMP struct {
 	XMLName xml.Name `xml:"RIMP"`
 	SBSN    string   `xml:"HSI>SBSN"`
@@ -23,34 +77,30 @@ type RIMP struct {
 	HWRI    string   `xml:"MP>HWRI"`
 }
 
-func (r *RIMP) GetHW() string {
+// HW ...
+func (r *RIMP) HW() string {
 	var iloRevision = regexp.MustCompile(`\((.*)\)`)
 	if len(r.PN) == 0 {
 		return "N/A"
 	}
-	return iloRevision.FindAllStringSubmatch(r.PN, 1)[0][1]
+	return strings.TrimSpace(iloRevision.FindAllStringSubmatch(r.PN, 1)[0][1])
 }
-func (r *RIMP) GetModel() string {
+
+// Model ...
+func (r *RIMP) Model() string {
 	if len(r.SPN) == 0 {
 		return "N/A"
 	}
 	return strings.TrimSpace(r.SPN)
 }
-func (r *RIMP) GetFW() string {
+
+// FW ...
+func (r *RIMP) FW() string {
 	if len(r.FWRI) == 0 {
 		return "N/A"
 	}
 	return strings.TrimSpace(r.FWRI)
 }
-
-const (
-	ILO_PORT = 17988
-)
-
-var (
-	IP_NETWORK   = kingpin.Arg("network", "Scan network, format 10.0.0.0/24").Required().String()
-	IP_NETPARSED []string
-)
 
 func inc(ip net.IP) {
 	for j := len(ip) - 1; j >= 0; j-- {
@@ -61,6 +111,7 @@ func inc(ip net.IP) {
 	}
 }
 
+// IsOpen ...
 func IsOpen(host string, port int) bool {
 
 	tcpAddr, err := net.ResolveTCPAddr("tcp4", fmt.Sprintf("%s:%d", host, port))
@@ -77,15 +128,9 @@ func IsOpen(host string, port int) bool {
 }
 
 func init() {
-	//flag.StringVar(&IP_NETWORK, "net", "", "Scan network, format 10.0.0.0/24")
-	//flag.Usage = func() {
-	//fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-	//flag.PrintDefaults()
-	//}
-	//flag.Parse()
 	kingpin.Parse()
 
-	ip, ipnet, err := net.ParseCIDR(*IP_NETWORK)
+	ip, ipnet, err := net.ParseCIDR(*ipNetwork)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -95,72 +140,111 @@ func init() {
 	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
 		ips = append(ips, ip.String())
 	}
-	IP_NETPARSED = ips
+	ipNetParsed = ips
 }
 
-func scan(in chan string, out chan string) {
-	host := <-in
-	for host != "" {
-		if IsOpen(host, ILO_PORT) {
-			out <- host
-		}
-		host = <-in
-	}
-	out <- "done"
-}
-func main() {
-
-	fmt.Printf("Scaning %d hosts...\n\n", len(IP_NETPARSED))
-	c := make(chan string, 50)
-	in := make(chan string, 50)
-
-	//Запуск воркеров
-	for i := 0; i < 50; i++ {
-		go scan(in, c)
-	}
-
-	for _, ip := range IP_NETPARSED {
-		in <- ip
-	}
-
-	for i := 0; i < 50; i++ {
-		in <- ""
-	}
-
-	var iloip = make([]string, 0)
-	donecnt := 0
-	for donecnt <= 49 {
-		ip := <-c
-		if ip != "done" {
-			iloip = append(iloip, ip)
-		} else {
-			donecnt++
-		}
-	}
-
+func requestInfo(ip string) (*ILOInfo, error) {
 	request := gorequest.New()
-	table := clitable.New([]string{"iLO IP Address", "iLO HW", "iLO FW", "Server S/N", "Server Model"})
-	sort.Strings(iloip)
+	rinfo := &RIMP{}
 
-	for _, ipilo := range iloip {
-		var info RIMP
-		_, body, errs := request.Get(fmt.Sprintf("http://%s/xmldata?item=all", ipilo)).End()
+	_, body, err := request.Get(fmt.Sprintf("http://%s/xmldata?item=all", ip)).End()
 
-		if errs != nil {
-			panic(errs)
+	if err != nil {
+		return nil, fmt.Errorf("%v", err)
+	}
+	if err := xml.Unmarshal([]byte(body), rinfo); err != nil {
+		return nil, err
+	}
+	return &ILOInfo{
+		IP:     ip,
+		HW:     rinfo.HW(),
+		FW:     rinfo.FW(),
+		Model:  rinfo.Model(),
+		Serial: strings.TrimSpace(rinfo.SBSN),
+	}, nil
+}
+
+func makeJobs(ar []string, count int) [][]string {
+	chunk := len(ar) / count
+	start := 0
+	end := count
+	res := [][]string{}
+	for end < len(ar) {
+		res = append(res, ar[start:end])
+		start = end
+		end += chunk
+	}
+	res = append(res, ar[start:len(ar)])
+	return res
+}
+
+func main() {
+	//jobs_count := len(ipNetParsed) / 100
+	jobs := makeJobs(ipNetParsed, 100)
+	out := make(chan ILOInfo, 100)
+
+	scanbar := pb.StartNew(len(ipNetParsed)).Prefix("Scan net")
+	scanbar.ShowTimeLeft = false
+
+	wg := new(sync.WaitGroup)
+	//Запуск воркеров
+	for _, job := range jobs {
+		wg.Add(1)
+		go func(ips []string, out chan ILOInfo, bar *pb.ProgressBar) {
+			for _, host := range ips {
+				if IsOpen(host, iloPort) {
+					info, err := requestInfo(host)
+					if err != nil {
+						fmt.Print(err)
+					}
+					out <- *info
+				}
+				bar.Increment()
+			}
+			wg.Done()
+		}(job, out, scanbar)
+	}
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+	wg.Wait()
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"iLO IP Address", "iLO HW", "iLO FW", "Server S/N", "Server Model"})
+	table.SetBorder(false) // Set Border to false
+	data := [][]string{}
+	ilo := []ILOInfo{}
+	for info := range out {
+		ilo = append(ilo, info)
+	}
+	version := func(i1, i2 *ILOInfo) bool {
+		i1s := strings.Split(i1.HW, " ")
+		i2s := strings.Split(i2.HW, " ")
+		i1v := 1
+		i2v := 1
+		if len(i1s) > 1 {
+			i1v, _ = strconv.Atoi(i1s[1])
 		}
-		xml.Unmarshal([]byte(body), &info)
-		table.AddRow(map[string]interface{}{
-			"iLO IP Address": strings.TrimSpace(ipilo),
-			"iLO HW":         info.GetHW(),
-			"iLO FW":         info.GetFW(),
-			"Server S/N":     strings.TrimSpace(info.SBSN),
-			"Server Model":   info.GetModel(),
+		if len(i2s) > 1 {
+			i2v, _ = strconv.Atoi(i2s[1])
+		}
+
+		return i1v < i2v
+	}
+	By(version).Sort(ilo)
+	for _, info := range ilo {
+		data = append(data, []string{
+			info.IP,
+			info.HW,
+			info.FW,
+			info.Serial,
+			info.Model,
 		})
 	}
-
-	table.Markdown = true
-	table.Print()
+	scanbar.Finish()
+	table.AppendBulk(data) // Add Bulk Data
 	fmt.Println("")
-	fmt.Printf("%d iLOs found on network target %s.\n", len(iloip), *IP_NETWORK)
+	table.Render()
+
+	fmt.Println("")
 }
