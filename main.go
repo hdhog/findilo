@@ -12,8 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cheggaaa/pb"
-	"github.com/codegangsta/cli"
+	"github.com/cheggaaa/pb"	
 	"github.com/olekukonko/tablewriter"
 	"github.com/parnurzeal/gorequest"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -28,6 +27,7 @@ var (
 	ipNetParsed []string
 )
 
+// ILOInfo ...
 type ILOInfo struct {
 	IP     string
 	HW     string
@@ -35,6 +35,8 @@ type ILOInfo struct {
 	FW     string
 	Serial string
 }
+
+// ILOSorter ...
 type ILOSorter struct {
 	ilo []ILOInfo
 	by  func(i1, i2 *ILOInfo) bool

@@ -4,8 +4,10 @@
 Работает как на Windows так и на *nix
 
 пример вызова:
+```bash
 findilo 10.0.0.0/24
-
+```
+```bash
 usage: findilo [<flags>] <network>
 
 Flags:
@@ -13,4 +15,4 @@ Flags:
 
 Args:
   <network>  Scan network, format 10.0.0.0/24
-
+```
