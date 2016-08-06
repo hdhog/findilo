@@ -1,4 +1,5 @@
 ﻿[![Build Status](https://drone.io/github.com/hdhog/findilo/status.png)](https://drone.io/github.com/hdhog/findilo/latest)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hdhog/findilo)](https://goreportcard.com/report/github.com/hdhog/findilo)
 
 # Поиск ILO в сети.
 По мотивам скрипта findilos http://blog.nachotech.com/?p=63
