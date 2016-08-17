@@ -213,8 +213,20 @@ func tableRender(ilo []ILOInfo) {
 	fmt.Println("")
 	table.Render()
 }
+func scan(ips []string, out chan ILOInfo, bar *pb.ProgressBar, wg *sync.WaitGroup) {
+	for _, host := range ips {
+		if IsOpen(host, iloPort) {
+			info, err := requestInfo(host)
+			if err != nil {
+				fmt.Print(err)
+			}
+			out <- *info
+		}
+		bar.Increment()
+	}
+	wg.Done()
+}
 func main() {
-	//jobs_count := len(ipNetParsed) / 100
 	jobs := makeJobs(ipNetParsed, 100)
 	out := make(chan ILOInfo, 100)
 
@@ -225,19 +237,7 @@ func main() {
 	//Запуск воркеров
 	for _, job := range jobs {
 		wg.Add(1)
-		go func(ips []string, out chan ILOInfo, bar *pb.ProgressBar) {
-			for _, host := range ips {
-				if IsOpen(host, iloPort) {
-					info, err := requestInfo(host)
-					if err != nil {
-						fmt.Print(err)
-					}
-					out <- *info
-				}
-				bar.Increment()
-			}
-			wg.Done()
-		}(job, out, scanbar)
+		go scan(job, out, scanbar, wg)
 	}
 	go func() {
 		wg.Wait()
