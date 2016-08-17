@@ -226,6 +226,7 @@ func scan(ips []string, out chan ILOInfo, bar *pb.ProgressBar, wg *sync.WaitGrou
 	}
 	wg.Done()
 }
+
 func main() {
 	jobs := makeJobs(ipNetParsed, 100)
 	out := make(chan ILOInfo, 100)
@@ -239,11 +240,9 @@ func main() {
 		wg.Add(1)
 		go scan(job, out, scanbar, wg)
 	}
-	go func() {
-		wg.Wait()
-		close(out)
-	}()
+
 	wg.Wait()
+	close(out)
 
 	ilo := []ILOInfo{}
 	for info := range out {
