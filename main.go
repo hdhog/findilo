@@ -213,6 +213,7 @@ func tableRender(ilo []ILOInfo) {
 	fmt.Println("")
 	table.Render()
 }
+
 func scan(ips []string, out chan ILOInfo, bar *pb.ProgressBar, wg *sync.WaitGroup) {
 	for _, host := range ips {
 		if IsOpen(host, iloPort) {
@@ -230,8 +231,10 @@ func scan(ips []string, out chan ILOInfo, bar *pb.ProgressBar, wg *sync.WaitGrou
 func main() {
 	jobs := makeJobs(ipNetParsed, 100)
 	out := make(chan ILOInfo, 100)
+	ipNetLen := len(ipNetParsed)
 
-	scanbar := pb.StartNew(len(ipNetParsed)).Prefix("Scan net")
+	scanbar := pb.StartNew(ipNetLen)
+	scanbar = scanbar.Prefix("Scan net")
 	scanbar.ShowTimeLeft = false
 
 	wg := new(sync.WaitGroup)
