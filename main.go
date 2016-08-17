@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cheggaaa/pb"	
+	"github.com/cheggaaa/pb"
 	"github.com/olekukonko/tablewriter"
 	"github.com/parnurzeal/gorequest"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -179,7 +179,40 @@ func makeJobs(ar []string, count int) [][]string {
 	res = append(res, ar[start:len(ar)])
 	return res
 }
+func tableRender(ilo []ILOInfo) {
+	data := [][]string{}
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"iLO IP Address", "iLO HW", "iLO FW", "Server S/N", "Server Model"})
+	table.SetBorder(false) // Set Border to false
+	version := func(i1, i2 *ILOInfo) bool {
+		i1s := strings.Split(i1.HW, " ")
+		i2s := strings.Split(i2.HW, " ")
+		i1v := 1
+		i2v := 1
+		if len(i1s) > 1 {
+			i1v, _ = strconv.Atoi(i1s[1])
+		}
+		if len(i2s) > 1 {
+			i2v, _ = strconv.Atoi(i2s[1])
+		}
 
+		return i1v < i2v
+	}
+	By(version).Sort(ilo)
+	for _, info := range ilo {
+		data = append(data, []string{
+			info.IP,
+			info.HW,
+			info.FW,
+			info.Serial,
+			info.Model,
+		})
+	}
+
+	table.AppendBulk(data) // Add Bulk Data
+	fmt.Println("")
+	table.Render()
+}
 func main() {
 	//jobs_count := len(ipNetParsed) / 100
 	jobs := makeJobs(ipNetParsed, 100)
@@ -211,42 +244,12 @@ func main() {
 		close(out)
 	}()
 	wg.Wait()
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"iLO IP Address", "iLO HW", "iLO FW", "Server S/N", "Server Model"})
-	table.SetBorder(false) // Set Border to false
-	data := [][]string{}
+
 	ilo := []ILOInfo{}
 	for info := range out {
 		ilo = append(ilo, info)
 	}
-	version := func(i1, i2 *ILOInfo) bool {
-		i1s := strings.Split(i1.HW, " ")
-		i2s := strings.Split(i2.HW, " ")
-		i1v := 1
-		i2v := 1
-		if len(i1s) > 1 {
-			i1v, _ = strconv.Atoi(i1s[1])
-		}
-		if len(i2s) > 1 {
-			i2v, _ = strconv.Atoi(i2s[1])
-		}
-
-		return i1v < i2v
-	}
-	By(version).Sort(ilo)
-	for _, info := range ilo {
-		data = append(data, []string{
-			info.IP,
-			info.HW,
-			info.FW,
-			info.Serial,
-			info.Model,
-		})
-	}
 	scanbar.Finish()
-	table.AppendBulk(data) // Add Bulk Data
-	fmt.Println("")
-	table.Render()
-
+	tableRender(ilo)
 	fmt.Println("")
 }
