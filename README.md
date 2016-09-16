@@ -1,4 +1,5 @@
-﻿[![Build Status](https://drone.io/github.com/hdhog/findilo/status.png)](https://drone.io/github.com/hdhog/findilo/latest)
+﻿[![License](https://img.shields.io/github/license/hdhog/findilo.svg?style=flat-square)](https://github.com/hdhog/findilo/blob/master/LICENSE)
+[![Build Status](https://drone.io/github.com/hdhog/findilo/status.png)](https://drone.io/github.com/hdhog/findilo/latest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/hdhog/findilo)](https://goreportcard.com/report/github.com/hdhog/findilo)
 
 # Поиск ILO в сети.
