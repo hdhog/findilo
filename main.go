@@ -1,9 +1,13 @@
 package main
 
 import (
+	"crypto/tls"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
 	"os"
 	"regexp"
 	"sort"
@@ -19,7 +23,8 @@ import (
 )
 
 const (
-	iloPort = 17988
+	iloPort      = 17988
+	NotAvailable = "N/A"
 )
 
 var (
@@ -29,11 +34,13 @@ var (
 
 // ILOInfo ...
 type ILOInfo struct {
-	IP     string
-	HW     string
-	Model  string
-	FW     string
-	Serial string
+	IP         string
+	HW         string
+	Model      string
+	FW         string
+	Serial     string
+	ServerName string
+	IloName    string
 }
 
 // ILOSorter ...
@@ -79,11 +86,16 @@ type RIMP struct {
 	HWRI    string   `xml:"MP>HWRI"`
 }
 
+type ServerName struct {
+	Name string `json:"server_name"`
+	Cn   string `json:"cn"`
+}
+
 // HW ...
 func (r *RIMP) HW() string {
 	var iloRevision = regexp.MustCompile(`\((.*)\)`)
 	if len(r.PN) == 0 {
-		return "N/A"
+		return NotAvailable
 	}
 	return strings.TrimSpace(iloRevision.FindAllStringSubmatch(r.PN, 1)[0][1])
 }
@@ -91,7 +103,7 @@ func (r *RIMP) HW() string {
 // Model ...
 func (r *RIMP) Model() string {
 	if len(r.SPN) == 0 {
-		return "N/A"
+		return NotAvailable
 	}
 	return strings.TrimSpace(r.SPN)
 }
@@ -99,7 +111,7 @@ func (r *RIMP) Model() string {
 // FW ...
 func (r *RIMP) FW() string {
 	if len(r.FWRI) == 0 {
-		return "N/A"
+		return NotAvailable
 	}
 	return strings.TrimSpace(r.FWRI)
 }
@@ -145,6 +157,55 @@ func init() {
 	ipNetParsed = ips
 }
 
+func requestServerNameV2(ip string) (string, string, error) {
+	request := gorequest.New()
+
+	_, body, err := request.Get(fmt.Sprintf("http://%s/", ip)).End()
+	if err != nil {
+		return "", "", fmt.Errorf("%v", err)
+	}
+	reSrv := regexp.MustCompile(`serverName\="([\w-]+)"`)
+	reIlo := regexp.MustCompile(`nicName\="([\w-]+)"`)
+	matchSrv := reSrv.FindStringSubmatch(string(body))
+	matchIlo := reIlo.FindStringSubmatch(string(body))
+	serverName := ""
+	iloName := ""
+	if len(matchSrv) > 0 {
+		serverName = matchSrv[1]
+	}
+	if len(matchIlo) > 0 {
+		iloName = matchIlo[1]
+	}
+	return serverName, iloName, nil
+}
+
+func requestServerName(ip string) (string, string, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://%s/json/login_session?null", ip), nil)
+	req.Header.Set("Content-Type", "application/json")
+	if err != nil {
+		return "", "", err
+	}
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+
+	raw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", err
+	}
+	srvinfo := &ServerName{}
+	if err := json.Unmarshal(raw, srvinfo); err != nil {
+		return "", "", err
+	}
+	//fmt.Println(srvinfo.ServerName)
+	return srvinfo.Name, srvinfo.Cn, nil
+}
+
 func requestInfo(ip string) (*ILOInfo, error) {
 	request := gorequest.New()
 	rinfo := &RIMP{}
@@ -182,7 +243,7 @@ func makeJobs(ar []string, count int) [][]string {
 func tableRender(ilo []ILOInfo) {
 	data := [][]string{}
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"iLO IP Address", "iLO HW", "iLO FW", "Server S/N", "Server Model"})
+	table.SetHeader([]string{"iLO IP Address", "iLO HW", "iLO FW", "Server S/N", "Server Model", "ServerName", "Name"})
 	table.SetBorder(false) // Set Border to false
 	version := func(i1, i2 *ILOInfo) bool {
 		i1s := strings.Split(i1.HW, " ")
@@ -206,6 +267,8 @@ func tableRender(ilo []ILOInfo) {
 			info.FW,
 			info.Serial,
 			info.Model,
+			info.ServerName,
+			info.IloName,
 		})
 	}
 
@@ -217,10 +280,19 @@ func tableRender(ilo []ILOInfo) {
 func scan(ips []string, out chan ILOInfo, bar *pb.ProgressBar, wg *sync.WaitGroup) {
 	for _, host := range ips {
 		if IsOpen(host, iloPort) {
+			srvName := ""
+			iloName := ""
 			info, err := requestInfo(host)
 			if err != nil {
-				fmt.Print(err)
+				fmt.Println(err)
 			}
+			if match, _ := regexp.MatchString("iLO (3|4|5)", info.HW); match {
+				srvName, iloName, _ = requestServerName(host)
+			} else {
+				srvName, iloName, _ = requestServerNameV2(host)
+			}
+			info.ServerName = srvName
+			info.IloName = iloName
 			out <- *info
 		}
 		bar.Increment()
