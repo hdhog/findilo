@@ -45,7 +45,7 @@
 			"importpath": "github.com/olekukonko/tablewriter",
 			"repository": "https://github.com/olekukonko/tablewriter",
 			"vcs": "git",
-			"revision": "bdcc175572fd7abece6c831e643891b9331bc9e7",
+			"revision": "44e365d423f4f06769182abfeeae2b91be9d529b",
 			"branch": "master",
 			"notests": true
 		},
@@ -53,7 +53,7 @@
 			"importpath": "github.com/parnurzeal/gorequest",
 			"repository": "https://github.com/parnurzeal/gorequest",
 			"vcs": "git",
-			"revision": "bdd24ac7ec2b0b2126f4782dd031644cbea1d223",
+			"revision": "f441e24175ffc865a6354b65375e537201c51382",
 			"branch": "develop",
 			"notests": true
 		},
@@ -61,7 +61,7 @@
 			"importpath": "golang.org/x/net/context",
 			"repository": "https://go.googlesource.com/net",
 			"vcs": "git",
-			"revision": "e31bd588d1077ee66a958c0ad3a235f2084b4195",
+			"revision": "60c41d1de8da134c05b7b40154a9a82bf5b7edb9",
 			"branch": "master",
 			"path": "context",
 			"notests": true
@@ -70,7 +70,7 @@
 			"importpath": "golang.org/x/net/idna",
 			"repository": "https://go.googlesource.com/net",
 			"vcs": "git",
-			"revision": "e31bd588d1077ee66a958c0ad3a235f2084b4195",
+			"revision": "60c41d1de8da134c05b7b40154a9a82bf5b7edb9",
 			"branch": "master",
 			"path": "idna",
 			"notests": true
@@ -79,7 +79,7 @@
 			"importpath": "golang.org/x/net/publicsuffix",
 			"repository": "https://go.googlesource.com/net",
 			"vcs": "git",
-			"revision": "e31bd588d1077ee66a958c0ad3a235f2084b4195",
+			"revision": "60c41d1de8da134c05b7b40154a9a82bf5b7edb9",
 			"branch": "master",
 			"path": "/publicsuffix",
 			"notests": true
