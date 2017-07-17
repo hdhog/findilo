@@ -19,16 +19,14 @@ import (
 	"github.com/cheggaaa/pb"
 	"github.com/olekukonko/tablewriter"
 	"github.com/parnurzeal/gorequest"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 const (
 	iloPort      = 17988
-	NotAvailable = "N/A"
+	notAvailable = "N/A"
 )
 
 var (
-	ipNetwork   = kingpin.Arg("network", "Scan network, format 10.0.0.0/24").Required().String()
 	ipNetParsed []string
 )
 
@@ -86,6 +84,7 @@ type RIMP struct {
 	HWRI    string   `xml:"MP>HWRI"`
 }
 
+// ServerName ...
 type ServerName struct {
 	Name string `json:"server_name"`
 	Cn   string `json:"cn"`
@@ -95,7 +94,7 @@ type ServerName struct {
 func (r *RIMP) HW() string {
 	var iloRevision = regexp.MustCompile(`\((.*)\)`)
 	if len(r.PN) == 0 {
-		return NotAvailable
+		return notAvailable
 	}
 	return strings.TrimSpace(iloRevision.FindAllStringSubmatch(r.PN, 1)[0][1])
 }
@@ -103,7 +102,7 @@ func (r *RIMP) HW() string {
 // Model ...
 func (r *RIMP) Model() string {
 	if len(r.SPN) == 0 {
-		return NotAvailable
+		return notAvailable
 	}
 	return strings.TrimSpace(r.SPN)
 }
@@ -111,7 +110,7 @@ func (r *RIMP) Model() string {
 // FW ...
 func (r *RIMP) FW() string {
 	if len(r.FWRI) == 0 {
-		return NotAvailable
+		return notAvailable
 	}
 	return strings.TrimSpace(r.FWRI)
 }
@@ -139,22 +138,6 @@ func IsOpen(host string, port int) bool {
 	}
 	defer conn.Close()
 	return true
-}
-
-func init() {
-	kingpin.Parse()
-
-	ip, ipnet, err := net.ParseCIDR(*ipNetwork)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	var ips []string
-	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
-		ips = append(ips, ip.String())
-	}
-	ipNetParsed = ips
 }
 
 func requestServerNameV2(ip string) (string, string, error) {
@@ -243,7 +226,7 @@ func makeJobs(ar []string, count int) [][]string {
 func tableRender(ilo []ILOInfo) {
 	data := [][]string{}
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"iLO IP Address", "iLO HW", "iLO FW", "Server S/N", "Server Model", "ServerName", "Name"})
+	table.SetHeader([]string{"IP", "HW", "FW", "S/N", "Model", "ServerName", "Name"})
 	table.SetBorder(false) // Set Border to false
 	version := func(i1, i2 *ILOInfo) bool {
 		i1s := strings.Split(i1.HW, " ")
@@ -301,6 +284,22 @@ func scan(ips []string, out chan ILOInfo, bar *pb.ProgressBar, wg *sync.WaitGrou
 }
 
 func main() {
+	if len(os.Args) == 1 {
+		fmt.Printf("Usage: findilo <network>, Format 10.0.0.0/24\n")
+		os.Exit(1)
+	}
+	ipNetwork := os.Args[1:][0]
+	ip, ipnet, err := net.ParseCIDR(ipNetwork)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	var ips []string
+	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
+		ips = append(ips, ip.String())
+	}
+	ipNetParsed = ips
 	jobs := makeJobs(ipNetParsed, 100)
 	out := make(chan ILOInfo, 100)
 	ipNetLen := len(ipNetParsed)

@@ -21,7 +21,7 @@
 			"importpath": "github.com/cheggaaa/pb",
 			"repository": "https://github.com/cheggaaa/pb",
 			"vcs": "git",
-			"revision": "d7e6ca3010b6f084d8056847f55d7f572f180678",
+			"revision": "f6ccf2184de4dd34495277e38dc19b6e7fbe0ea2",
 			"branch": "master",
 			"notests": true
 		},
@@ -29,7 +29,7 @@
 			"importpath": "github.com/mattn/go-runewidth",
 			"repository": "https://github.com/mattn/go-runewidth",
 			"vcs": "git",
-			"revision": "737072b4e32b7a5018b4a7125da8d12de90e8045",
+			"revision": "97311d9f7767e3d6f422ea06661bc2c7a19e8a5d",
 			"branch": "master",
 			"notests": true
 		},
@@ -45,7 +45,7 @@
 			"importpath": "github.com/olekukonko/tablewriter",
 			"repository": "https://github.com/olekukonko/tablewriter",
 			"vcs": "git",
-			"revision": "44e365d423f4f06769182abfeeae2b91be9d529b",
+			"revision": "be7a31354aeea3f9f5efbc5c74d0a67ce132de6f",
 			"branch": "master",
 			"notests": true
 		},
@@ -53,7 +53,7 @@
 			"importpath": "github.com/parnurzeal/gorequest",
 			"repository": "https://github.com/parnurzeal/gorequest",
 			"vcs": "git",
-			"revision": "f441e24175ffc865a6354b65375e537201c51382",
+			"revision": "5bf13be198787abbed057fb7c4007f372083a0f5",
 			"branch": "develop",
 			"notests": true
 		},
@@ -61,7 +61,7 @@
 			"importpath": "golang.org/x/net/context",
 			"repository": "https://go.googlesource.com/net",
 			"vcs": "git",
-			"revision": "60c41d1de8da134c05b7b40154a9a82bf5b7edb9",
+			"revision": "b3756b4b77d7b13260a0a2ec658753cf48922eac",
 			"branch": "master",
 			"path": "context",
 			"notests": true
@@ -70,7 +70,7 @@
 			"importpath": "golang.org/x/net/idna",
 			"repository": "https://go.googlesource.com/net",
 			"vcs": "git",
-			"revision": "60c41d1de8da134c05b7b40154a9a82bf5b7edb9",
+			"revision": "b3756b4b77d7b13260a0a2ec658753cf48922eac",
 			"branch": "master",
 			"path": "idna",
 			"notests": true
@@ -79,7 +79,7 @@
 			"importpath": "golang.org/x/net/publicsuffix",
 			"repository": "https://go.googlesource.com/net",
 			"vcs": "git",
-			"revision": "60c41d1de8da134c05b7b40154a9a82bf5b7edb9",
+			"revision": "b3756b4b77d7b13260a0a2ec658753cf48922eac",
 			"branch": "master",
 			"path": "/publicsuffix",
 			"notests": true
@@ -88,7 +88,7 @@
 			"importpath": "gopkg.in/alecthomas/kingpin.v2",
 			"repository": "https://gopkg.in/alecthomas/kingpin.v2",
 			"vcs": "git",
-			"revision": "e9044be3ab2a8e11d4e1f418d12f0790d57e8d70",
+			"revision": "7f0871f2e17818990e4eed73f9b5c2f429501228",
 			"branch": "master",
 			"notests": true
 		}
