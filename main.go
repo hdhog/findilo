@@ -285,19 +285,20 @@ func scan(ips []string, out chan ILOInfo, bar *pb.ProgressBar, wg *sync.WaitGrou
 
 func main() {
 	if len(os.Args) == 1 {
-		fmt.Printf("Usage: findilo <network>, Format 10.0.0.0/24\n")
+		fmt.Printf("Usage: findilo <networks>, Format 10.0.0.0/24\n")
 		os.Exit(1)
 	}
-	ipNetwork := os.Args[1:][0]
-	ip, ipnet, err := net.ParseCIDR(ipNetwork)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
 	var ips []string
-	for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
-		ips = append(ips, ip.String())
+	for _, ipNetwork := range os.Args[1:] {
+		ip, ipnet, err := net.ParseCIDR(ipNetwork)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+		for ip := ip.Mask(ipnet.Mask); ipnet.Contains(ip); inc(ip) {
+			ips = append(ips, ip.String())
+		}
 	}
 	ipNetParsed = ips
 	jobs := makeJobs(ipNetParsed, 100)
